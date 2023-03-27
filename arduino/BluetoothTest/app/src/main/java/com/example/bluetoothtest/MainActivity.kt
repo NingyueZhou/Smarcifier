@@ -12,20 +12,26 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
+import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.ListAdapter
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-class BluetoothLeScanCallback : ScanCallback()
-{
-}
+val LOG_TAG_BT = "Bluetooth";
 
 class MainActivity : AppCompatActivity() {
+    private val SCAN_TIMEOUT: Long = 30000; // 30 seconds
+
     private var bleScanner: BluetoothLeScanner? = null;
     private var scanning: Boolean = false;
+    private val handler = Handler();
 
     private var deviceList = DeviceListAdapter();
 
@@ -43,15 +49,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetooth_connect)
 
+        // Set up button
         val button = findViewById<Button>(R.id.my_button);
-        button.text = "Find bluetooth device";
+        button.text = "Find bluetooth devices";
         button.setOnClickListener { _: View ->
             setupBluetooth();
             scanForBleDevices();
         }
+
+        // Set up device list
+        val list = findViewById<RecyclerView>(R.id.bt_device_list);
+        list.adapter = deviceList;
+        list.layoutManager = LinearLayoutManager(this@MainActivity);
     }
 
     private fun scanForBleDevices() {
+        assert(bleScanner != null);
+
+        // Check for scan permission
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.BLUETOOTH_SCAN
@@ -60,14 +75,18 @@ class MainActivity : AppCompatActivity() {
             requestBluetoothPermission.launch(Manifest.permission.BLUETOOTH_SCAN);
             return;
         }
-        //if (bleScanner == null) {
-        //    setupBluetooth();
-        //    return;
-        //}
 
-        assert(bleScanner != null);
+        // Start scanning
         if (!scanning) {
             bleScanner?.startScan(scanCallback);
+            scanning = true;
+
+            // Stop the scan after a timeout
+            handler.postDelayed({
+                bleScanner?.stopScan(scanCallback);
+                scanning = false;
+                Log.d(LOG_TAG_BT, "Scanning stopped after timeout of ${SCAN_TIMEOUT}s");
+            }, SCAN_TIMEOUT);
         }
     }
 
@@ -102,22 +121,10 @@ class MainActivity : AppCompatActivity() {
             enableBluetooth.launch(intent);
         }
 
+        // The scanner can be retrieved even without BLUETOOTH_SCAN permissions.
+        // I test for the permission when I actually use the scanner, i.e. in
+        // `scanForBleDevices`.
         bleScanner = btAdapter.bluetoothLeScanner;
-        return;
-
-        // Explicitly request permission to scan for devices.
-        // Query the scanner object if permission is granted.
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestBluetoothPermission.launch(Manifest.permission.BLUETOOTH_SCAN);
-            return;
-        }
-        else {
-            bleScanner = btAdapter.bluetoothLeScanner;
-        }
     }
 
     /**

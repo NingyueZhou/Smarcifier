@@ -4,10 +4,17 @@ import android.bluetooth.BluetoothDevice
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
+import android.widget.Button
 import androidx.recyclerview.widget.RecyclerView
 
-class DeviceListAdapter : RecyclerView.Adapter<DeviceListAdapter.ViewHolder>()
+/**
+ * A list of devices. Creates a button for each device.
+ *
+ * @param onDeviceClick A callback that is called whenever the user clicks on a
+ *                      button in the list.
+ */
+class DeviceListAdapter(private val onDeviceClick: (BluetoothDevice) -> Unit)
+    : RecyclerView.Adapter<DeviceListAdapter.ViewHolder>()
 {
     /**
      * Wrapper around a `View` that contains the layout for an individual item
@@ -15,10 +22,10 @@ class DeviceListAdapter : RecyclerView.Adapter<DeviceListAdapter.ViewHolder>()
      */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view)
     {
-        val textView: TextView;
+        val connectButton: Button;
 
         init {
-            textView = view.findViewById(R.id.textView);
+            connectButton = view.findViewById<Button>(R.id.device_list_elem);
         }
     }
 
@@ -28,20 +35,27 @@ class DeviceListAdapter : RecyclerView.Adapter<DeviceListAdapter.ViewHolder>()
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.textView.text = devices[position].name;
+        val device = devices[position];
+        holder.connectButton.text = device.name;
+        holder.connectButton.setOnClickListener { _ ->
+            onDeviceClick(device);
+        };
     }
 
     override fun getItemCount(): Int {
         return devices.size;
     }
 
-    public fun addDevice(device: BluetoothDevice) {
-        if (!devices.contains(device)) {
+    fun addDevice(device: BluetoothDevice) {
+        if (!devices.contains(device) && device.name != null) {
             devices.add(device);
+            // Log.d(LOG_TAG_BT, "Device added to the device list: ${device.name}")
+            super.notifyItemInserted(devices.size - 1);
         }
     }
 
-    public fun clear() {
+    fun clear() {
+        super.notifyItemRangeRemoved(0, devices.size);
         devices.clear();
     }
 
