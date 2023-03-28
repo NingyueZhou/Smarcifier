@@ -4,29 +4,48 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define SERVICE_UUID "bbbaa765-0507-423a-9494-9cfd4d7e86fb"
 
 #define TEMPERATURE_CHARACTERISTIC_UUID "673eb6f3-1af4-48db-83ac-dd9d3b0c5950"
 #define TEMPERATURE_VALUE_ACCURACY (1e3)
-#define TEMPERATURE_VALUE_INVALID "INVALID TEMP VALUE"
+#define TEMPERATURE_VALUE_INVALID "-"
 
 Adafruit_Si7021 temp = Adafruit_Si7021();
 
 uint32_t tempVal = 0;
 BLECharacteristic* tempCharacteristic = nullptr;
 
+bool deviceConnected = false;
+
+class ConnectionCallbacks : public BLEServerCallbacks
+{
+    void onConnect(BLEServer* server) override
+    {
+        deviceConnected = true;
+    };
+
+    void onDisconnect(BLEServer* server) override
+    {
+        deviceConnected = false;
+        delay(500);
+        server->startAdvertising();
+    }
+};
+
 void setup() {
     Serial.begin(115200);
 
     // Set up bluetooth
-    BLEDevice::init("My BLE test device :D");
+    BLEDevice::init("Thermo Bo-Bo");
     BLEServer* server = BLEDevice::createServer();
+    server->setCallbacks(new ConnectionCallbacks);
+
     BLEService* service = server->createService(SERVICE_UUID);
 
     // Create a characteristic for the temperature value
     tempCharacteristic = service->createCharacteristic(
         TEMPERATURE_CHARACTERISTIC_UUID,
-        BLECharacteristic::PROPERTY_READ
+        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
     );
     tempCharacteristic->setValue(tempVal);
 
@@ -50,12 +69,17 @@ void setup() {
 }
 
 void loop() {
-    // Include 3 digits after the point
-    tempVal = uint32_t(temp.readTemperature() * TEMPERATURE_VALUE_ACCURACY);
+    if (deviceConnected)
+    {
+        // Include 3 digits after the point
+        tempVal = uint32_t(temp.readTemperature() * TEMPERATURE_VALUE_ACCURACY);
 
-    // Update the temperature value.
-    if (tempCharacteristic != nullptr) {
-        tempCharacteristic->setValue(tempVal);
+        // Update the temperature value.
+        if (tempCharacteristic != nullptr)
+        {
+            tempCharacteristic->setValue(tempVal);
+            tempCharacteristic->notify();
+        }
     }
 
     delay(500);
