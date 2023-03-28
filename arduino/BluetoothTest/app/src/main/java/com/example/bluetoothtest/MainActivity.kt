@@ -1,10 +1,8 @@
 package com.example.bluetoothtest
 
 import android.Manifest
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothClass.Device
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
+import android.annotation.SuppressLint
+import android.bluetooth.*
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
@@ -16,16 +14,16 @@ import android.os.Handler
 import android.util.Log
 import android.view.View
 import android.widget.Button
-import android.widget.ListAdapter
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.util.*
 
-val LOG_TAG_BT = "Bluetooth";
+const val LOG_TAG_BT = "Bluetooth";
 
+@SuppressLint("MissingPermission")
 class MainActivity : AppCompatActivity() {
     private val SCAN_TIMEOUT: Long = 30000; // 30 seconds
 
@@ -33,7 +31,18 @@ class MainActivity : AppCompatActivity() {
     private var scanning: Boolean = false;
     private val handler = Handler();
 
-    private var deviceList = DeviceListAdapter();
+    private val deviceList: DeviceListAdapter;
+    private var boboConnection: BoboConnection? = null;
+
+    init {
+        deviceList = DeviceListAdapter { device: BluetoothDevice ->
+            Log.d(LOG_TAG_BT, "Device connected: ${device.name}");
+            boboConnection = BoboConnection(this, device) { newTemp ->
+                val text = findViewById<TextView>(R.id.temperature_display);
+                text.post(Runnable { text.text = newTemp.toString() })
+            }
+        };
+    }
 
     /**
      * Ad-hoc implementation of a BLE scan callback
@@ -60,11 +69,10 @@ class MainActivity : AppCompatActivity() {
         // Set up device list
         val list = findViewById<RecyclerView>(R.id.bt_device_list);
         list.adapter = deviceList;
-        list.layoutManager = LinearLayoutManager(this@MainActivity);
     }
 
     private fun scanForBleDevices() {
-        assert(bleScanner != null);
+        if (bleScanner == null) return;
 
         // Check for scan permission
         if (ContextCompat.checkSelfPermission(
@@ -85,8 +93,14 @@ class MainActivity : AppCompatActivity() {
             handler.postDelayed({
                 bleScanner?.stopScan(scanCallback);
                 scanning = false;
-                Log.d(LOG_TAG_BT, "Scanning stopped after timeout of ${SCAN_TIMEOUT}s");
             }, SCAN_TIMEOUT);
+        }
+        // If scanning is in process, reset the device list and restart the scan
+        else {
+            bleScanner?.stopScan(scanCallback);
+            scanning = false;
+            deviceList.clear();
+            scanForBleDevices();
         }
     }
 
