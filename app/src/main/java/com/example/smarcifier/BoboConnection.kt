@@ -8,7 +8,7 @@ import java.util.*
 class BoboConnection(
     context: Context,
     private val device: BluetoothDevice,
-    private val onTemperatureChange: (Float) -> Unit
+    private var onTemperatureChange: (Float) -> Unit
 ) {
     private val SERVICE_UUID = UUID.fromString("bbbaa765-0507-423a-9494-9cfd4d7e86fb")
     private val TEMP_UUID = UUID.fromString("673eb6f3-1af4-48db-83ac-dd9d3b0c5950")
@@ -78,5 +78,9 @@ class BoboConnection(
 
     public fun getTemperature(): Float? {
         return currentTemperature
+    }
+
+    public fun setOnTemperatureChange(onTempChange: (Float) -> Unit) {
+        onTemperatureChange = onTempChange;
     }
 }

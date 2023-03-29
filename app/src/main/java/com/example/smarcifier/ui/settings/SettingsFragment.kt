@@ -5,26 +5,24 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import com.example.bluetoothtest.BoboConnection
 import com.example.smarcifier.BluetoothInstance
 import com.example.smarcifier.DeviceListAdapter
+import com.example.smarcifier.MainActivity
 import com.example.smarcifier.R
 import com.example.smarcifier.databinding.FragmentSettingsBinding
 
-class SettingsFragment : Fragment() {
-
+class SettingsFragment : Fragment()
+{
     private var context: Context? = null;
     private var _binding: FragmentSettingsBinding? = null
 
     private var bluetooth: BluetoothInstance? = null;
-    private var boboConnection: BoboConnection? = null;
 
     // The list of all discovered Bluetooth devices.
     private val btDeviceList: DeviceListAdapter = DeviceListAdapter(::onDeviceClick);
@@ -69,22 +67,18 @@ class SettingsFragment : Fragment() {
             })
         }
         else {
-            // Try again
-            Log.d("foo", "Failed to initialize bluetooth stack.");
-            //bluetooth = BluetoothInstance(this, ::onInitialize);
+            // Try again?
+            // bluetooth = BluetoothInstance(this, ::onInitialize);
         }
     }
 
     private fun onDeviceClick(device: BluetoothDevice) {
-        boboConnection = BoboConnection(context!!, device) { newTemp ->
-            val text = view?.findViewById<TextView>(R.id.bt_status_text);
-            text?.post(Runnable { text.text = "%.2f".format(newTemp) });
-        }
-    }
+        val newCon = BoboConnection(context!!, device) {}
 
-    private val scanCallback: ScanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
-            btDeviceList.addDevice(result.device);
-        }
+        // HACK: Access the activity directly because I don't know how to access
+        // the fragment in MainActivity::onCreate. The clean way to do this
+        // would be a callback interface that the MainActivity can instantiate
+        // and pass to the SettingsFragment.
+        (activity as MainActivity?)?.notifyBluetoothConnect(newCon);
     }
 }
