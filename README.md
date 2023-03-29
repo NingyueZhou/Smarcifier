@@ -1,5 +1,22 @@
 # Smarcifier
 
+## Projects
+
+### Android Projects
+
+The top-level directory contains (is) the primary project for the Thermo Bo-Bo.
+
+`arduino/BluetoothTest` is a project that was used to figure out how the Android SDK's Bluetooth LE
+stack works.
+
+### Microcontroller code
+
+`arduino/bluetooth/` contains the code that runs on the Thermo Bo-Bo. It is a simple Bluetooth LE
+server that defines a single characteristic for the temperature value. Clients are notified when the
+value changes.
+
+The arduino code also contains the UUIDs for the Bluetooth LE service and the characteristic.
+
 ## Tools
 
 `arduino/read_serial.py` is a small python script that reads lines from a serial port. Usage:
