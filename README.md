@@ -11,6 +11,8 @@ stack works.
 
 ### Microcontroller code
 
+Install the library 'ESP32AnalogRead' for the production code to compile.
+
 `arduino/bluetooth/` contains the code that runs on the Thermo Bo-Bo. It is a simple Bluetooth LE
 server that defines a single characteristic for the temperature value. Clients are notified when the
 value changes.

@@ -1,8 +1,12 @@
 // Test bluetooth stuff
+// This has turned into the production code running on the Thermo Bo-Bo.
 
-#include <Adafruit_Si7021.h>
+// Uncomment to print debug logging to Serial:
+// #define DEBUG
+
 #include <BLEDevice.h>
 #include <BLEServer.h>
+#include <ESP32AnalogRead.h>
 
 #define SERVICE_UUID "bbbaa765-0507-423a-9494-9cfd4d7e86fb"
 
@@ -10,7 +14,23 @@
 #define TEMPERATURE_VALUE_ACCURACY (1e3)
 #define TEMPERATURE_VALUE_INVALID "-"
 
-Adafruit_Si7021 temp = Adafruit_Si7021();
+//////////////////////////////////////////////////////
+// Temperature analog <-> digital conversion constants
+
+const int ThermistorPin = 33;
+const int vout_pin = 23;
+const float R1 = 39000;
+
+const float A = 7.6647e-04;
+const float B = 2.3051e-04;
+const float C = 7.3815e-08;
+
+ESP32AnalogRead adc;
+
+// ---------------------------------------------------
+//////////////////////////////////////////////////////
+
+const int TICK_DELAY = 1000;
 
 uint32_t tempVal = 0;
 BLECharacteristic* tempCharacteristic = nullptr;
@@ -63,24 +83,45 @@ void setup() {
     BLEDevice::startAdvertising();
 
     // Set up temperature sensor
-    if (!temp.begin()) {
-        tempCharacteristic->setValue(TEMPERATURE_VALUE_INVALID);
-    }
+    tempCharacteristic->setValue(TEMPERATURE_VALUE_INVALID);
+    pinMode(vout_pin, OUTPUT);
+    adc.attach(33);
+}
+
+float readTemperature() {
+    double Vo = adc.readVoltage() / 3.3 * 4095;
+    if (Vo == 0.0) return 0.0f;  // Guard against division by zero
+
+    const float R2 = R1 * (4095.0f / (float)Vo - 1.0f);
+    const float logR2 = log(R2);
+
+    float T = (1.0f / (A + B*logR2 + C*logR2*logR2*logR2));
+    T = T - 273.15f;
+
+    return T;
 }
 
 void loop() {
     if (deviceConnected)
     {
+        digitalWrite(vout_pin, HIGH);
+        delay(50);  // Wait for the voltage to stabilize
+        const float currentTemp = readTemperature();
+        digitalWrite(vout_pin, LOW);
+
         // Include 3 digits after the point
-        tempVal = uint32_t(temp.readTemperature() * TEMPERATURE_VALUE_ACCURACY);
+        tempVal = uint32_t(currentTemp * TEMPERATURE_VALUE_ACCURACY);
 
         // Update the temperature value.
-        if (tempCharacteristic != nullptr)
-        {
-            tempCharacteristic->setValue(tempVal);
-            tempCharacteristic->notify();
-        }
+        tempCharacteristic->setValue(tempVal);
+        tempCharacteristic->notify();
+
+#ifdef DEBUG
+        Serial.print("Temperature: ");
+        Serial.print(currentTemp);
+        Serial.println(" °C");
+#endif
     }
 
-    delay(500);
+    delay(TICK_DELAY);
 }
