@@ -44,11 +44,11 @@ class TempFragment : Fragment() {
         val entries = ArrayList<Entry>()
 
         //Part2
-        entries.add(Entry(1f, 10f))
-        entries.add(Entry(2f, 2f))
-        entries.add(Entry(3f, 7f))
-        entries.add(Entry(4f, 20f))
-        entries.add(Entry(5f, 16f))
+        entries.add(Entry(1f, 36.5f))
+        entries.add(Entry(2f, 36.0f))
+        entries.add(Entry(3f, 38.5f))
+        entries.add(Entry(4f, 35.0f))
+        entries.add(Entry(5f, 36.5f))
 
         //Part3
         //val vl = LineDataSet(entries, "My Type")
