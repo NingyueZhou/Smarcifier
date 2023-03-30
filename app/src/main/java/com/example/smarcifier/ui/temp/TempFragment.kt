@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.smarcifier.MainActivity
 import com.example.smarcifier.R
+import com.example.smarcifier.TemperatureHistory
 import com.example.smarcifier.databinding.FragmentTempBinding
 import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.data.Entry
@@ -48,7 +49,9 @@ class TempFragment : Fragment()
     private val binding get() = _binding!!
 
     private val MAX_TEMP_ENTRIES = 20;
+    private val TEMP_HISTORY_SIZE = 5;
     private val entries: LineDataSet = LineDataSet(ArrayList<Entry>(), "Temperature");
+    private val history: TemperatureHistory = TemperatureHistory(TEMP_HISTORY_SIZE);
 
     init {
         //entries.setDrawValues(false)
@@ -62,14 +65,18 @@ class TempFragment : Fragment()
         }
     }
 
-    private fun onNewTemperature(newTemp: Float) {
-        if (_binding == null) return;
+    private fun onNewTemperature(_newTemp: Float) {
+        history.push(_newTemp);
+        val newTemp = history.avg()  // Use a moving average over the last five
+                                     // temperature readings
 
         // Update text view
-        val textView = binding.root.findViewById<TextView>(R.id.textTemperature);
-        textView?.post(Runnable() {
-            textView.text = "%.1f".format(newTemp);
-        })
+        if (_binding != null) {
+            val textView = binding.root.findViewById<TextView>(R.id.textTemperature);
+            textView?.post(Runnable() {
+                textView.text = "%.1f".format(newTemp);
+            })
+        }
 
         // Add item to graph
         val curTime = System.currentTimeMillis() % (1000 * 60 * 60 * 24);
