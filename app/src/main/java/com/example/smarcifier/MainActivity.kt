@@ -24,6 +24,8 @@ class MainActivity : AppCompatActivity() {
 
     private var boboConnection: BoboConnection? = null;
 
+    private var onTempChange: (Float) -> Unit = {};
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -68,23 +70,28 @@ class MainActivity : AppCompatActivity() {
         return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
     }
 
+    /**
+     * Accessed by SettingsFragment
+     */
     fun notifyBluetoothConnect(newCon: BoboConnection) {
         // Disconnect any existing connection
         boboConnection?.disconnect();
 
         // Set the new connection
         boboConnection = newCon;
-        boboConnection?.setOnTemperatureChange { newTemp: Float ->
-            val textView = findViewById<TextView>(R.id.textTemperature);
-            textView?.post(Runnable() {
-                textView.text = "%.1f".format(newTemp);
-            })
-        }
+        boboConnection?.setOnTemperatureChange(onTempChange);
 
         Toast.makeText(
             this,
             "Successfully connected to Bo-Bo device.",
             Toast.LENGTH_LONG
         ).show();
+    }
+
+    /**
+     * Accessed by TempFragment
+     */
+    fun setOnTemperatureChangeCallback(callback: (Float) -> Unit) {
+        onTempChange = callback;
     }
 }

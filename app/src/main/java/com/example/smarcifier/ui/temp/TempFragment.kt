@@ -1,25 +1,92 @@
 package com.example.smarcifier.ui.temp
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import com.example.smarcifier.MainActivity
+import com.example.smarcifier.R
 import com.example.smarcifier.databinding.FragmentTempBinding
-import com.github.mikephil.charting.animation.Easing
+import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.formatter.ValueFormatter
+import java.math.RoundingMode
+import java.util.concurrent.TimeUnit
 
-class TempFragment : Fragment() {
+class TemperatureValueFormatter : ValueFormatter()
+{
+    override fun getPointLabel(entry: Entry?): String {
+        if (entry == null) return "";
+        return "%.1f".format(entry.y);
+    }
+}
 
+class TimeFormatter : ValueFormatter()
+{
+    override fun getAxisLabel(value: Float, axis: AxisBase?): String {
+        val millis = value.toLong();
+        return "%02d:%02d:%02d".format(
+            TimeUnit.MILLISECONDS.toHours(millis),
+            TimeUnit.MILLISECONDS.toMinutes(millis) % TimeUnit.HOURS.toMinutes(1),
+            TimeUnit.MILLISECONDS.toSeconds(millis) % TimeUnit.MINUTES.toSeconds(1)
+        );
+    }
+}
+
+class TempFragment : Fragment()
+{
     private var _binding: FragmentTempBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+
+    private val MAX_TEMP_ENTRIES = 20;
+    private val entries: LineDataSet = LineDataSet(ArrayList<Entry>(), "Temperature");
+
+    init {
+        //entries.setDrawValues(false)
+        entries.valueFormatter = TemperatureValueFormatter()
+        entries.setDrawFilled(true)
+        // entries.mode = LineDataSet.Mode.CUBIC_BEZIER
+        entries.lineWidth = 3f
+
+        for (i in 0..MAX_TEMP_ENTRIES) {
+            entries.addEntry(Entry(i.toFloat(), 35.0f));
+        }
+    }
+
+    private fun onNewTemperature(newTemp: Float) {
+        if (_binding == null) return;
+
+        // Update text view
+        val textView = binding.root.findViewById<TextView>(R.id.textTemperature);
+        textView?.post(Runnable() {
+            textView.text = "%.1f".format(newTemp);
+        })
+
+        // Add item to graph
+        val curTime = System.currentTimeMillis() % (1000 * 60 * 60 * 24);
+        val rounded = newTemp.toBigDecimal().setScale(1, RoundingMode.HALF_EVEN).toFloat();
+        entries.addEntry(Entry(curTime.toFloat(), rounded));
+        updateGraph();
+    }
+
+    private fun updateGraph() {
+        while (entries.entryCount > MAX_TEMP_ENTRIES) {
+            entries.removeFirst()
+        }
+
+        val lineChart = binding.lineChart
+        lineChart.data = LineData(entries)
+        lineChart.invalidate();
+    }
 
     override fun onCreateView(
             inflater: LayoutInflater,
@@ -37,57 +104,20 @@ class TempFragment : Fragment() {
             textTemperature.text = it
         }
 
-        //setLineChart
+        (activity as MainActivity?)?.setOnTemperatureChangeCallback(::onNewTemperature);
+
+        // Configure the line chart
         val lineChart = binding.lineChart
-
-        //Part1
-        val entries = ArrayList<Entry>()
-
-        //Part2
-        entries.add(Entry(1f, 36.5f))
-        entries.add(Entry(2f, 36.0f))
-        entries.add(Entry(3f, 38.5f))
-        entries.add(Entry(4f, 35.0f))
-        entries.add(Entry(5f, 36.5f))
-
-        //Part3
-        //val vl = LineDataSet(entries, "My Type")
-        val lineDataSet = LineDataSet(entries, "")
-        lineChart.getLegend().setEnabled(false)
-        //lineChart.getXAxis().setDrawLabels(false)
-
-        //Part4
-        lineDataSet.setDrawValues(true)
-        lineDataSet.setDrawFilled(true)
-        lineDataSet.lineWidth = 3f
-        //vl.fillColor = R.color.gray
-        //vl.fillAlpha = R.color.red
-
-        //Part5
+        lineChart.legend.isEnabled = false
+        lineChart.xAxis.setDrawLabels(true)
         lineChart.xAxis.labelRotationAngle = 0f
-
-        //Part6
-        lineChart.data = LineData(lineDataSet)
-
-        //Part7
+        lineChart.xAxis.valueFormatter = TimeFormatter()
         lineChart.axisRight.isEnabled = false
-        //binding.lineChart.xAxis.axisMaximum = j+0.1f
-
-        //Part8
+        lineChart.axisLeft.isEnabled = false;
         lineChart.setTouchEnabled(true)
         lineChart.setPinchZoom(true)
-
-        //Part9
-        //lineChart.description.text = "Days"
         lineChart.description.text = ""
-        lineChart.setNoDataText("No forex yet!")
-
-        //Part10
-        lineChart.animateX(1800, Easing.EaseInExpo)
-
-        //Part11
-        //val markerView = CustomMarker(activity, R.layout.fragment_settings)
-        //lineChart.marker = markerView
+        lineChart.setNoDataText("Connect to your Bo-Bo to see a measurement")
 
         return root
     }
